@@ -16,7 +16,7 @@ class SiameseLSTMw2v(object):
         # Define lstm cells with tensorflow
         # Forward direction cell
 
-        with tf.name_scope("fw"+scope),tf.variable_scope("fw"+scope):
+        with tf.name_scope("fw"+scope),tf.variable_scope("fw"+scope,reuse=tf.AUTO_REUSE):
             stacked_rnn_fw = []
             for _ in range(n_layers):
                 fw_cell = tf.nn.rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0, state_is_tuple=True)
@@ -25,7 +25,8 @@ class SiameseLSTMw2v(object):
             lstm_fw_cell_m = tf.nn.rnn_cell.MultiRNNCell(cells=stacked_rnn_fw, state_is_tuple=True)
 
             outputs, _ = tf.nn.static_rnn(lstm_fw_cell_m, x, dtype=tf.float32)
-        return outputs[-1]
+        # return outputs[-1]
+        return tf.reduce_mean(outputs, 0)
 
     def contrastive_loss(self, y,d,batch_size):
         tmp= y *tf.square(d)
@@ -55,8 +56,8 @@ class SiameseLSTMw2v(object):
         print self.embedded_words1
         # Create a convolution + maxpool layer for each filter size
         with tf.name_scope("output"):
-            self.out1=self.stackedRNN(self.embedded_words1, self.dropout_keep_prob, "side1", embedding_size, sequence_length, hidden_units)
-            self.out2=self.stackedRNN(self.embedded_words2, self.dropout_keep_prob, "side2", embedding_size, sequence_length, hidden_units)
+            self.out1=self.stackedRNN(self.embedded_words1, self.dropout_keep_prob, "side", embedding_size, sequence_length, hidden_units)
+            self.out2=self.stackedRNN(self.embedded_words2, self.dropout_keep_prob, "side", embedding_size, sequence_length, hidden_units)
             self.distance = tf.sqrt(tf.reduce_sum(tf.square(tf.subtract(self.out1,self.out2)),1,keep_dims=True))
             self.distance = tf.div(self.distance, tf.add(tf.sqrt(tf.reduce_sum(tf.square(self.out1),1,keep_dims=True)),tf.sqrt(tf.reduce_sum(tf.square(self.out2),1,keep_dims=True))))
             self.distance = tf.reshape(self.distance, [-1], name="distance")

@@ -67,7 +67,7 @@ class InputHelper(object):
         y=[]
         # positive samples from file
         for line in open(filepath):
-            l=line.strip().split("\t")
+            l=line.strip().split(",")
             if len(l)<2:
                 continue
             if random() > 0.5:
@@ -114,12 +114,12 @@ class InputHelper(object):
         y=[]
         # positive samples from file
         for line in open(filepath):
-            l=line.strip().split("\t")
+            l=line.strip().split(",")
             if len(l)<3:
                 continue
-            x1.append(l[1].lower())
-            x2.append(l[2].lower())
-            y.append(int(l[0])) #np.array([0,1]))
+            x1.append(l[0].lower())
+            x2.append(l[1].lower())
+            y.append(int(l[2])) #np.array([0,1]))
         return np.asarray(x1),np.asarray(x2),np.asarray(y)  
  
     def batch_iter(self, data, batch_size, num_epochs, shuffle=True):
