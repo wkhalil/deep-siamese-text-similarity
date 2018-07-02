@@ -199,7 +199,8 @@ with tf.Graph().as_default():
             }
         _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.distance, siameseModel.temp_sim, train_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        print("TRAIN {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
+        if step % 100 ==0:
+            print("TRAIN {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
         train_summary_writer.add_summary(summaries, step)
         print(y_batch, dist, sim)
 
@@ -223,7 +224,7 @@ with tf.Graph().as_default():
             }
         step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        print("DEV {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
+        # print("DEV {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
         print (y_batch, sim)
         return accuracy
@@ -247,6 +248,7 @@ with tf.Graph().as_default():
         if current_step % FLAGS.evaluate_every == 0:
             print("\nEvaluation:")
             dev_batches = inpH.batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2])), FLAGS.batch_size, 1)
+            nbatch=0
             for db in dev_batches:
                 if len(db)<1:
                     continue
@@ -255,6 +257,9 @@ with tf.Graph().as_default():
                     continue
                 acc = dev_step(x1_dev_b, x2_dev_b, y_dev_b)
                 sum_acc = sum_acc + acc
+                nbatch += 1
+            if nbatch != 0:
+                sum_acc /= nbatch
             print("")
         if current_step % FLAGS.checkpoint_every == 0:
             if sum_acc >= max_validation_acc:
