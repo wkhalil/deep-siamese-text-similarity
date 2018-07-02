@@ -67,7 +67,7 @@ class InputHelper(object):
         y=[]
         # positive samples from file
         for line in open(filepath):
-            l=line.strip().split("\t")
+            l=line.strip().split(",")
             if len(l)<2:
                 continue
             if random() > 0.5:
@@ -86,7 +86,7 @@ class InputHelper(object):
         y=[]
         # positive samples from file
         for line in open(filepath):
-            l=line.strip().split("\t")
+            l=line.strip().split(",")
             if len(l)<2:
                 continue
             if random() > 0.5:
@@ -114,14 +114,14 @@ class InputHelper(object):
         y=[]
         # positive samples from file
         for line in open(filepath):
-            l=line.strip().split("\t")
+            l=line.strip().split(",")
             if len(l)<3:
                 continue
             x1.append(l[1].lower())
             x2.append(l[2].lower())
             y.append(int(l[0])) #np.array([0,1]))
-        return np.asarray(x1),np.asarray(x2),np.asarray(y)  
- 
+        return np.asarray(x1),np.asarray(x2),np.asarray(y)
+
     def batch_iter(self, data, batch_size, num_epochs, shuffle=True):
         """
         Generates a batch iterator for a dataset.
@@ -142,7 +142,7 @@ class InputHelper(object):
                 start_index = batch_num * batch_size
                 end_index = min((batch_num + 1) * batch_size, data_size)
                 yield shuffled_data[start_index:end_index]
-                
+
     def dumpValidation(self,x1_text,x2_text,y,shuffled_index,dev_idx,i):
         print("dumping validation "+str(i))
         x1_shuffled=x1_text[shuffled_index]
@@ -155,15 +155,15 @@ class InputHelper(object):
         del y_shuffled
         with open('validation.txt'+str(i),'w') as f:
             for text1,text2,label in zip(x1_dev,x2_dev,y_dev):
-                f.write(str(label)+"\t"+text1+"\t"+text2+"\n")
+                f.write(str(label)+","+text1+","+text2+"\n")
             f.close()
         del x1_dev
         del y_dev
-    
+
     # Data Preparatopn
     # ==================================================
-    
-    
+
+
     def getDataSets(self, training_paths, max_document_length, percent_dev, batch_size, is_char_based):
         if is_char_based:
             x1_text, x2_text, y=self.getTsvDataCharBased(training_paths)
@@ -201,7 +201,7 @@ class InputHelper(object):
         dev_set=(x1_dev,x2_dev,y_dev)
         gc.collect()
         return train_set,dev_set,vocab_processor,sum_no_of_batches
-    
+
     def getTestDataSet(self, data_path, vocab_path, max_document_length):
         x1_temp,x2_temp,y = self.getTsvTestData(data_path)
 
