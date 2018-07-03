@@ -1,3 +1,4 @@
+# coding=utf-8
 #! /usr/bin/env python
 
 import tensorflow as tf
@@ -13,9 +14,9 @@ from input_helpers import InputHelper
 # Eval Parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
 tf.flags.DEFINE_string("checkpoint_dir", "", "Checkpoint directory from training run")
-tf.flags.DEFINE_string("eval_filepath", "validation.txt0", "Evaluate on this data (Default: None)")
-tf.flags.DEFINE_string("vocab_filepath", "runs/1512222837/checkpoints/vocab", "Load training time vocabulary (Default: None)")
-tf.flags.DEFINE_string("model", "runs/1512222837/checkpoints/model-5000", "Load trained model checkpoint (Default: None)")
+tf.flags.DEFINE_string("eval_filepath", "/home/zhangyu9/下载/魔镜杯/trans_test.txt", "Evaluate on this data (Default: None)")
+tf.flags.DEFINE_string("vocab_filepath", "/home/zhangyu9/桌面/local_to_server/deep-siamese-text-similarity/runs/1530598197/checkpoints/vocab", "Load training time vocabulary (Default: None)")
+tf.flags.DEFINE_string("model", "/home/zhangyu9/桌面/local_to_server/deep-siamese-text-similarity/runs/1530598197/checkpoints/model-66000", "Load trained model checkpoint (Default: None)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -23,7 +24,7 @@ tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on 
 
 
 FLAGS = tf.flags.FLAGS
-FLAGS._parse_flags()
+FLAGS.flag_values_dict()
 print("\nParameters:")
 for attr, value in sorted(FLAGS.__flags.items()):
     print("{}={}".format(attr.upper(), value))
@@ -35,7 +36,7 @@ if FLAGS.eval_filepath==None or FLAGS.vocab_filepath==None or FLAGS.model==None 
 
 # load data and map id-transform based on training time vocabulary
 inpH = InputHelper()
-x1_test,x2_test,y_test = inpH.getTestDataSet(FLAGS.eval_filepath, FLAGS.vocab_filepath, 30)
+x1_test,x2_test,y_test = inpH.getTestDataSet(FLAGS.eval_filepath, FLAGS.vocab_filepath, 39)
 
 print("\nEvaluating...\n")
 
@@ -62,27 +63,49 @@ with graph.as_default():
 
         dropout_keep_prob = graph.get_operation_by_name("dropout_keep_prob").outputs[0]
         # Tensors we want to evaluate
-        predictions = graph.get_operation_by_name("output/distance").outputs[0]
+        # predictions = graph.get_operation_by_name("output/distance").outputs[0]
+        predictions = graph.get_operation_by_name("output/out").outputs[0]
 
-        accuracy = graph.get_operation_by_name("accuracy/accuracy").outputs[0]
+        # accuracy = graph.get_operation_by_name("accuracy/accuracy").outputs[0]
 
         sim = graph.get_operation_by_name("accuracy/temp_sim").outputs[0]
 
         #emb = graph.get_operation_by_name("embedding/W").outputs[0]
         #embedded_chars = tf.nn.embedding_lookup(emb,input_x)
         # Generate batches for one epoch
-        batches = inpH.batch_iter(list(zip(x1_test,x2_test,y_test)), 2*FLAGS.batch_size, 1, shuffle=False)
+        # batches = inpH.batch_iter(list(zip(x1_test,x2_test,y_test)), 2*FLAGS.batch_size, 1, shuffle=False)
+        batches = inpH.batch_iter(list(zip(x1_test, x2_test)), 2 * FLAGS.batch_size, 1, shuffle=False)
         # Collect the predictions here
-        all_predictions = []
-        all_d=[]
+        # all_predictions = []
+        # all_d=[]
+        # for db in batches:
+        #     x1_dev_b,x2_dev_b,y_dev_b = zip(*db)
+        #     batch_predictions, batch_acc, batch_sim = sess.run([predictions,accuracy,sim], {input_x1: x1_dev_b, input_x2: x2_dev_b, input_y:y_dev_b, dropout_keep_prob: 1.0})
+        #     all_predictions = np.concatenate([all_predictions, batch_predictions])
+        #     print(batch_predictions)
+        #     all_d = np.concatenate([all_d, batch_sim])
+        #     print("DEV acc {}".format(batch_acc))
+        # for ex in all_predictions:
+        #     print ex
+        # correct_predictions = float(np.mean(all_d == y_test))
+        # print("Accuracy: {:g}".format(correct_predictions))
+
+        all_y_pre = []
+        count = 0
         for db in batches:
-            x1_dev_b,x2_dev_b,y_dev_b = zip(*db)
-            batch_predictions, batch_acc, batch_sim = sess.run([predictions,accuracy,sim], {input_x1: x1_dev_b, input_x2: x2_dev_b, input_y:y_dev_b, dropout_keep_prob: 1.0})
-            all_predictions = np.concatenate([all_predictions, batch_predictions])
-            print(batch_predictions)
-            all_d = np.concatenate([all_d, batch_sim])
-            print("DEV acc {}".format(batch_acc))
-        for ex in all_predictions:
-            print ex 
-        correct_predictions = float(np.mean(all_d == y_test))
-        print("Accuracy: {:g}".format(correct_predictions))
+            count+=1
+            x1_dev_b, x2_dev_b = zip(*db)
+            batch_predictions, batch_sim = sess.run([predictions,sim], {input_x1: x1_dev_b, input_x2: x2_dev_b, dropout_keep_prob: 1.0})
+            all_y_pre = np.concatenate([all_y_pre, batch_predictions])
+            # print all_y_pre
+        print 'count ',count,'\n'
+        print 'batch_y_pre ', len(all_y_pre)
+        # print all_y_pre
+        import time
+        now_t = time.strftime('%m.%d_%H:%M')
+        file_path = '/home/zhangyu9/下载/魔镜杯/submission_predict/submission_%s.csv' % now_t
+        print file_path, '\n'
+        with open(file_path,'w+') as f:
+            f.write('y_pre\n')
+            for i in all_y_pre:
+                f.write(str(i)+'\n')
