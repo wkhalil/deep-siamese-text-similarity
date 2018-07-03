@@ -52,7 +52,7 @@ if FLAGS.training_files==None:
     exit()
 
 
-max_document_length=15
+max_document_length = 39
 inpH = InputHelper()
 train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
                                                                          FLAGS.batch_size, FLAGS.is_char_based)
