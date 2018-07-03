@@ -31,7 +31,7 @@ tf.flags.DEFINE_integer("hidden_units", 50, "Number of hidden units (default:50)
 
 # Training parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
-tf.flags.DEFINE_string("unit_type", "bilstm", "hidden unit type (default: lstm)")
+tf.flags.DEFINE_string("unit_type", "lstm", "hidden unit type (default: lstm)")
 
 tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 100)")
@@ -39,6 +39,8 @@ tf.flags.DEFINE_integer("checkpoint_every", 1000, "Save model after this many st
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
+tf.flags.DEFINE_boolean("training", True, "BatchNormallizatoion train mode or test mode")
+
 
 FLAGS = tf.flags.FLAGS
 FLAGS.flag_values_dict()
@@ -99,15 +101,19 @@ with tf.Graph().as_default():
                 l2_reg_lambda=FLAGS.l2_reg_lambda,
                 batch_size=FLAGS.batch_size,
                 trainableEmbeddings=trainableEmbeddings,
-                unit_type=FLAGS.unit_type
+                unit_type=FLAGS.unit_type,
+                training=FLAGS.training
             )
         # Define Training procedure
         global_step = tf.Variable(0, name="global_step", trainable=False)
         optimizer = tf.train.AdamOptimizer(1e-3)
         print("initialized siameseModel object")
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        # train_op = optimizer.minimize(siameseModel.loss)
+        grads_and_vars=optimizer.compute_gradients(siameseModel.loss)
+        tr_op_set = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
 
-    grads_and_vars=optimizer.compute_gradients(siameseModel.loss)
-    tr_op_set = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
     print("defined training_ops")
     # Keep track of gradient values and sparsity (optional)
     grad_summaries = []
@@ -182,7 +188,7 @@ with tf.Graph().as_default():
         gc.collect()
         sess.run(siameseModel.W.assign(initW))
 
-    def train_step(x1_batch, x2_batch, y_batch):
+    def train_step(x1_batch, x2_batch, y_batch,len_batch):
         """
         A single training step
         """
@@ -191,6 +197,7 @@ with tf.Graph().as_default():
                 siameseModel.input_x1: x1_batch,
                 siameseModel.input_x2: x2_batch,
                 siameseModel.input_y: y_batch,
+                siameseModel.extra_feature: len_batch,
                 siameseModel.dropout_keep_prob: FLAGS.dropout_keep_prob,
             }
         else:
@@ -198,6 +205,7 @@ with tf.Graph().as_default():
                 siameseModel.input_x1: x2_batch,
                 siameseModel.input_x2: x1_batch,
                 siameseModel.input_y: y_batch,
+                siameseModel.extra_feature: len_batch,
                 siameseModel.dropout_keep_prob: FLAGS.dropout_keep_prob,
             }
         _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.output, siameseModel.temp_sim, train_summary_op],  feed_dict)
@@ -206,7 +214,7 @@ with tf.Graph().as_default():
         train_summary_writer.add_summary(summaries, step)
         print(y_batch, dist, sim)
 
-    def dev_step(x1_batch, x2_batch, y_batch):
+    def dev_step(x1_batch, x2_batch, y_batch,len_batch):
         """
         A single training step
         """ 
@@ -215,6 +223,7 @@ with tf.Graph().as_default():
                 siameseModel.input_x1: x1_batch,
                 siameseModel.input_x2: x2_batch,
                 siameseModel.input_y: y_batch,
+                siameseModel.extra_feature:len_batch,
                 siameseModel.dropout_keep_prob: 1.0,
             }
         else:
@@ -222,6 +231,7 @@ with tf.Graph().as_default():
                 siameseModel.input_x1: x2_batch,
                 siameseModel.input_x2: x1_batch,
                 siameseModel.input_y: y_batch,
+                siameseModel.extra_feature: len_batch,
                 siameseModel.dropout_keep_prob: 1.0,
             }
         step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
@@ -233,7 +243,7 @@ with tf.Graph().as_default():
 
     # Generate batches
     batches=inpH.batch_iter(
-                list(zip(train_set[0], train_set[1], train_set[2])), FLAGS.batch_size, FLAGS.num_epochs)
+                list(zip(train_set[0], train_set[1], train_set[2],train_set[3])), FLAGS.batch_size, FLAGS.num_epochs)
 
     ptr=0
     max_validation_acc=0.0
@@ -241,22 +251,22 @@ with tf.Graph().as_default():
         batch = batches.next()
         if len(batch)<1:
             continue
-        x1_batch,x2_batch, y_batch = zip(*batch)
+        x1_batch,x2_batch, y_batch ,len_batch= zip(*batch)
         if len(y_batch)<1:
             continue
-        train_step(x1_batch, x2_batch, y_batch)
+        train_step(x1_batch, x2_batch, y_batch,len_batch)
         current_step = tf.train.global_step(sess, global_step)
         sum_acc=0.0
         if current_step % FLAGS.evaluate_every == 0:
             print("\nEvaluation:")
-            dev_batches = inpH.batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2])), FLAGS.batch_size, 1)
+            dev_batches = inpH.batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2],dev_set[3])), FLAGS.batch_size, 1)
             for db in dev_batches:
                 if len(db)<1:
                     continue
-                x1_dev_b,x2_dev_b,y_dev_b = zip(*db)
+                x1_dev_b,x2_dev_b,y_dev_b,len_dev_b = zip(*db)
                 if len(y_dev_b)<1:
                     continue
-                acc = dev_step(x1_dev_b, x2_dev_b, y_dev_b)
+                acc = dev_step(x1_dev_b, x2_dev_b, y_dev_b,len_dev_b)
                 sum_acc = sum_acc + acc
             print("")
         if current_step % FLAGS.checkpoint_every == 0:

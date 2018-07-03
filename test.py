@@ -20,13 +20,13 @@ import math
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
 tf.flags.DEFINE_string("checkpoint_dir", "", "Checkpoint directory from training run")
 tf.flags.DEFINE_string("eval_filepath", "corpus_test.txt", "Evaluate on this data (Default: None)")
-tf.flags.DEFINE_string("vocab_filepath", "runs/1530450443/checkpoints/vocab", "Load training time vocabulary (Default: None)")
-tf.flags.DEFINE_string("model", "runs/1530450443/checkpoints/model-71000", "Load trained model checkpoint (Default: None)")
+tf.flags.DEFINE_string("vocab_filepath", "runs/1530601554/checkpoints/vocab", "Load training time vocabulary (Default: None)")
+tf.flags.DEFINE_string("model", "runs/1530601554/checkpoints/model-65000", "Load trained model checkpoint (Default: None)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
-
+tf.flags.DEFINE_boolean("training", False, "BatchNormallizatoion train mode or test mode")
 
 FLAGS = tf.flags.FLAGS
 # FLAGS._parse_flags()
@@ -42,8 +42,8 @@ if FLAGS.eval_filepath==None or FLAGS.vocab_filepath==None or FLAGS.model==None 
 
 # load data and map id-transform based on training time vocabulary
 inpH = InputHelper()
-x1_test,x2_test,y_test = inpH.getTestDataSet(FLAGS.eval_filepath, FLAGS.vocab_filepath, 39)
-out_put_file=open('submission1.csv','w')
+x1_test,x2_test,x_len,y_test = inpH.getTestDataSet(FLAGS.eval_filepath, FLAGS.vocab_filepath, 39)
+out_put_file=open('submission2.csv','w')
 out_put_file.write('y_pre'+'\n')
 print("\nEvaluating...\n")
 
@@ -67,6 +67,7 @@ with graph.as_default():
         input_x1 = graph.get_operation_by_name("input_x1").outputs[0]
         input_x2 = graph.get_operation_by_name("input_x2").outputs[0]
         # input_y = graph.get_operation_by_name("input_y").outputs[0]
+        extra_feature = graph.get_operation_by_name("extra_feature").outputs[0]
 
         dropout_keep_prob = graph.get_operation_by_name("dropout_keep_prob").outputs[0]
         # Tensors we want to evaluate
@@ -79,13 +80,13 @@ with graph.as_default():
         #emb = graph.get_operation_by_name("embedding/W").outputs[0]
         #embedded_chars = tf.nn.embedding_lookup(emb,input_x)
         # Generate batches for one epoch
-        batches = inpH.batch_iter(list(zip(x1_test,x2_test)), 2*FLAGS.batch_size, 1, shuffle=False)
+        batches = inpH.batch_iter(list(zip(x1_test,x2_test,x_len)), 2*FLAGS.batch_size, 1, shuffle=False)
         # Collect the predictions here
         all_predictions = []
         all_d=[]
         for db in batches:
-            x1_dev_b,x2_dev_b = zip(*db)
-            batch_predictions= sess.run([predictions], {input_x1: x1_dev_b, input_x2: x2_dev_b,dropout_keep_prob: 1.0})
+            x1_dev_b,x2_dev_b,x_len_dev_b = zip(*db)
+            batch_predictions= sess.run([predictions], {input_x1: x1_dev_b, input_x2: x2_dev_b,extra_feature:x_len_dev_b,dropout_keep_prob: 1.0})
             out_put_file.write('\n'.join([str(i) for i in batch_predictions[0]]))
             out_put_file.write('\n')
             # all_predictions = np.concatenate([all_predictions, batch_predictions])

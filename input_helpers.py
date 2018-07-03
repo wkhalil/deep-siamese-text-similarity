@@ -64,6 +64,7 @@ class InputHelper(object):
         print("Loading training data from "+filepath)
         x1=[]
         x2=[]
+        x_len=[]
         y=[]
         # positive samples from file
         for line in open(filepath):
@@ -76,13 +77,15 @@ class InputHelper(object):
             else:
                 x1.append(l[1].lower())
                 x2.append(l[0].lower())
+            x_len.append(abs(len(l[0].split())-len(l[1].split())))
             y.append(int(l[2]))
-        return np.asarray(x1),np.asarray(x2),np.asarray(y)
+        return np.asarray(x1),np.asarray(x2),np.asarray(x_len),np.asarray(y)
 
     def getTsvDataCharBased(self, filepath):
         print("Loading training data from "+filepath)
         x1=[]
         x2=[]
+        x_len = []
         y=[]
         # positive samples from file
         for line in open(filepath):
@@ -95,6 +98,7 @@ class InputHelper(object):
             else:
                x1.append(l[1].lower())
                x2.append(l[0].lower())
+            x_len.append(abs(len(l[0].split())-len(l[1].split())))
             y.append(1)#np.array([0,1]))
         # generate random negative samples
         combined = np.asarray(x1+x2)
@@ -104,7 +108,7 @@ class InputHelper(object):
             x1.append(combined[i])
             x2.append(combined_shuff[i])
             y.append(0) #np.array([1,0]))
-        return np.asarray(x1),np.asarray(x2),np.asarray(y)
+        return np.asarray(x1),np.asarray(x2),np.asarray(x_len),np.asarray(y)
 
 
     def getTsvTestData(self, filepath):
@@ -112,6 +116,7 @@ class InputHelper(object):
         x1=[]
         x2=[]
         y=[]
+        x_len = []
         # positive samples from file
         for line in open(filepath):
             l=line.strip().split(",")
@@ -120,14 +125,15 @@ class InputHelper(object):
             x1.append(l[1].lower())
             x2.append(l[2].lower())
             y.append(int(l[0])) #np.array([0,1]))
-        return np.asarray(x1),np.asarray(x2),np.asarray(y)
+            x_len.append(abs(len(l[1].split()) - len(l[2].split())))
+        return np.asarray(x1),np.asarray(x2),np.asarray(x_len),np.asarray(y)
 
     def batch_iter(self, data, batch_size, num_epochs, shuffle=True):
         """
         Generates a batch iterator for a dataset.
         """
         data = np.asarray(data)
-        print(data)
+        # print(data)
         print(data.shape)
         data_size = len(data)
         num_batches_per_epoch = int(len(data)/batch_size) + 1
@@ -166,9 +172,9 @@ class InputHelper(object):
 
     def getDataSets(self, training_paths, max_document_length, percent_dev, batch_size, is_char_based):
         if is_char_based:
-            x1_text, x2_text, y=self.getTsvDataCharBased(training_paths)
+            x1_text, x2_text,x_len_text, y=self.getTsvDataCharBased(training_paths)
         else:
-            x1_text, x2_text, y=self.getTsvData(training_paths)
+            x1_text, x2_text,x_len_text, y=self.getTsvData(training_paths)
         # Build vocabulary
         print("Building vocabulary")
         vocab_processor = MyVocabularyProcessor(max_document_length,min_frequency=0,is_char_based=is_char_based)
@@ -185,6 +191,7 @@ class InputHelper(object):
         shuffle_indices = np.random.permutation(np.arange(len(y)))
         x1_shuffled = x1[shuffle_indices]
         x2_shuffled = x2[shuffle_indices]
+        x_len_shuffled = x_len_text[shuffle_indices]
         y_shuffled = y[shuffle_indices]
         dev_idx = -1*len(y_shuffled)*percent_dev//100
         del x1
@@ -195,15 +202,16 @@ class InputHelper(object):
         x1_train, x1_dev = x1_shuffled[:dev_idx], x1_shuffled[dev_idx:]
         x2_train, x2_dev = x2_shuffled[:dev_idx], x2_shuffled[dev_idx:]
         y_train, y_dev = y_shuffled[:dev_idx], y_shuffled[dev_idx:]
+        x_len_train,x_len_dev = x_len_shuffled[:dev_idx],x_len_shuffled[dev_idx:]
         print("Train/Dev split for {}: {:d}/{:d}".format(training_paths, len(y_train), len(y_dev)))
         sum_no_of_batches = sum_no_of_batches+(len(y_train)//batch_size)
-        train_set=(x1_train,x2_train,y_train)
-        dev_set=(x1_dev,x2_dev,y_dev)
+        train_set=(x1_train,x2_train,y_train,x_len_train)
+        dev_set=(x1_dev,x2_dev,y_dev,x_len_dev)
         gc.collect()
         return train_set,dev_set,vocab_processor,sum_no_of_batches
 
     def getTestDataSet(self, data_path, vocab_path, max_document_length):
-        x1_temp,x2_temp,y = self.getTsvTestData(data_path)
+        x1_temp,x2_temp,x_len,y = self.getTsvTestData(data_path)
 
         # Build vocabulary
         vocab_processor = MyVocabularyProcessor(max_document_length,min_frequency=0)
@@ -215,5 +223,5 @@ class InputHelper(object):
         # Randomly shuffle data
         del vocab_processor
         gc.collect()
-        return x1,x2, y
+        return x1,x2,x_len, y
 
