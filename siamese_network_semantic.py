@@ -88,6 +88,7 @@ class SiameseLSTMw2v(object):
 
         #### Accuracy computation is outside of this class.
         with tf.name_scope("accuracy"):
-            self.temp_sim = tf.subtract(tf.ones_like(self.distance),tf.rint(self.distance), name="temp_sim") #auto threshold 0.5
+            # self.temp_sim = tf.subtract(tf.ones_like(self.distance),tf.rint(self.distance), name="temp_sim") #auto threshold 0.5
+            self.temp_sim = tf.rint(self.output, name="temp_sim")
             correct_predictions = tf.equal(self.temp_sim, self.input_y)
             self.accuracy=tf.reduce_mean(tf.cast(correct_predictions, "float"), name="accuracy")

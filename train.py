@@ -21,7 +21,8 @@ tf.flags.DEFINE_boolean("is_char_based", False, "is character based syntactic si
                                                "if false then word embedding based semantic similarity is used."
                                                "(default: True)")
 
-tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_keyword.vec", "word2vec pre-trained embeddings file (default: None)")
+# tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_keyword.vec", "word2vec pre-trained embeddings file (default: None)")
+tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_key_char.vec", "word2vec pre-trained embeddings file (default: None)")
 tf.flags.DEFINE_string("word2vec_format", "text", "word2vec pre-trained embeddings file format (bin/text/textgz)(default: None)")
 
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
@@ -32,7 +33,7 @@ tf.flags.DEFINE_integer("hidden_units", 50, "Number of hidden units (default:50)
 
 # Training parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
-tf.flags.DEFINE_integer("num_epochs", 10, "Number of training epochs (default: 200)")
+tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 100)")
 tf.flags.DEFINE_integer("checkpoint_every", 1000, "Save model after this many steps (default: 100)")
 # Misc Parameters
@@ -197,7 +198,11 @@ with tf.Graph().as_default():
                 siameseModel.input_y: y_batch,
                 siameseModel.dropout_keep_prob: FLAGS.dropout_keep_prob,
             }
-        _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.distance, siameseModel.temp_sim, train_summary_op],  feed_dict)
+        # _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy,
+        #                                                           siameseModel.distance, siameseModel.temp_sim, train_summary_op],  feed_dict)
+        _, step, loss, accuracy, sim, summaries = sess.run(
+            [tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy,
+              siameseModel.temp_sim, train_summary_op], feed_dict)
         time_str = datetime.datetime.now().isoformat()
         if step % 100 ==0:
             print("TRAIN {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
