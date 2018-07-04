@@ -16,19 +16,28 @@ import gzip
 from random import random
 # Parameters
 # ==================================================
+word_char_chose = 'word'
+if word_char_chose =='word':
+    max_document_length = 39        # 句子的最长词数为39
+    tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_keyword.vec", "word2vec pre-trained embeddings file (default: None)")
+    tf.flags.DEFINE_string("training_files", "/home/zhangyu9/下载/魔镜杯/trans_train.train",
+                           "training file (default: None)")  # for sentence semantic similarity use "train_snli.txt"
+elif word_char_chose =='char':
+    max_document_length = 58        # 句子的最长字符数为58
+    tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_key_char.vec", "word2vec pre-trained embeddings file (default: None)")
+    tf.flags.DEFINE_string("training_files", "/home/zhangyu9/下载/魔镜杯/trans_train_char.train", "training file (default: None)")
 
 tf.flags.DEFINE_boolean("is_char_based", False, "is character based syntactic similarity. "
                                                "if false then word embedding based semantic similarity is used."
                                                "(default: True)")
-
-# tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_keyword.vec", "word2vec pre-trained embeddings file (default: None)")
-tf.flags.DEFINE_string("word2vec_model", "/home/zhangyu9/下载/魔镜杯/new_key_char.vec", "word2vec pre-trained embeddings file (default: None)")
 tf.flags.DEFINE_string("word2vec_format", "text", "word2vec pre-trained embeddings file format (bin/text/textgz)(default: None)")
+tf.flags.DEFINE_string("lstm_type", "bi_lstm", "lstm_type,chosen from fw_lstm and bi_lstm")
 
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
 tf.flags.DEFINE_float("dropout_keep_prob", 1.0, "Dropout keep probability (default: 1.0)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularizaion lambda (default: 0.0)")
-tf.flags.DEFINE_string("training_files", "/home/zhangyu9/下载/魔镜杯/trans_train.train", "training file (default: None)")  #for sentence semantic similarity use "train_snli.txt"
+
+
 tf.flags.DEFINE_integer("hidden_units", 50, "Number of hidden units (default:50)")
 
 # Training parameters
@@ -52,7 +61,7 @@ if FLAGS.training_files==None:
     exit()
 
 
-max_document_length = 39
+
 inpH = InputHelper()
 train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
                                                                          FLAGS.batch_size, FLAGS.is_char_based)
@@ -97,7 +106,8 @@ with tf.Graph().as_default():
                 hidden_units=FLAGS.hidden_units,
                 l2_reg_lambda=FLAGS.l2_reg_lambda,
                 batch_size=FLAGS.batch_size,
-                trainableEmbeddings=trainableEmbeddings
+                trainableEmbeddings=trainableEmbeddings,
+                lstm_type=FLAGS.lstm_type
             )
         # Define Training procedure
         global_step = tf.Variable(0, name="global_step", trainable=False)
